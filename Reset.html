@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Reset Password — Omex Automation</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1115;
+      color: #e6e8eb;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #1a1d24;
+      border: 1px solid #2a2e37;
+      border-radius: 16px;
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .logo {
+      text-align: center;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #4f9dff;
+    }
+    h1 { font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 24px; color: #e6e8eb; }
+    label { display: block; font-size: 13px; margin-bottom: 6px; color: #9aa0aa; }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: #0f1115;
+      border: 1px solid #2a2e37;
+      border-radius: 10px;
+      color: #e6e8eb;
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+    input:focus { outline: none; border-color: #4f9dff; }
+    button {
+      width: 100%;
+      padding: 13px;
+      background: #4f9dff;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { margin-top: 16px; font-size: 14px; text-align: center; padding: 12px; border-radius: 8px; display: none; }
+    .msg.success { background: #12331f; color: #4ade80; display: block; }
+    .msg.error { background: #331616; color: #f87171; display: block; }
+    .hint { font-size: 12px; color: #6b7280; margin-top: -8px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">OMEX Automation</div>
+    <h1>Reset your password</h1>
+
+    <div id="form">
+      <label for="pw">New password</label>
+      <input type="password" id="pw" placeholder="At least 8 characters" autocomplete="new-password" />
+
+      <label for="pw2">Confirm new password</label>
+      <input type="password" id="pw2" placeholder="Re-enter password" autocomplete="new-password" />
+      <div class="hint">Choose a strong password you haven't used before.</div>
+
+      <button id="submitBtn" onclick="submitReset()">Reset password</button>
+    </div>
+
+    <div id="msg" class="msg"></div>
+  </div>
+
+  <script>
+    // ⚙️ Backend base URL — change to your HTTPS domain once nginx/TLS is set up
+    const API_BASE = "http://89.116.33.225:3000";
+
+    // Grab token from ?token=...
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    const msg = document.getElementById("msg");
+    const form = document.getElementById("form");
+    const btn = document.getElementById("submitBtn");
+
+    function showMsg(text, type) {
+      msg.textContent = text;
+      msg.className = "msg " + type;
+    }
+
+    if (!token) {
+      form.style.display = "none";
+      showMsg("Invalid reset link. Please request a new one from the app.", "error");
+    }
+
+    async function submitReset() {
+      const pw = document.getElementById("pw").value;
+      const pw2 = document.getElementById("pw2").value;
+
+      if (pw.length < 8) { showMsg("Password must be at least 8 characters.", "error"); return; }
+      if (pw !== pw2) { showMsg("Passwords do not match.", "error"); return; }
+
+      btn.disabled = true;
+      btn.textContent = "Resetting...";
+
+      try {
+        const res = await fetch(API_BASE + "/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, password: pw }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          form.style.display = "none";
+          showMsg("Password reset successfully. You can now log in with your new password.", "success");
+        } else {
+          showMsg(data.error || "Reset failed. The link may have expired.", "error");
+          btn.disabled = false;
+          btn.textContent = "Reset password";
+        }
+      } catch (e) {
+        showMsg("Network error. Please try again.", "error");
+        btn.disabled = false;
+        btn.textContent = "Reset password";
+      }
+    }
+  </script>
+</body>
+</html>
